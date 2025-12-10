@@ -229,6 +229,31 @@ cmake --build .
 
 On successful build, the main executable (e.g. `tcms_cip_sim`) will be placed in `build/`.
 
+## Development environment setup
+
+Prebuilt Debian packages for the core dependencies are stored in `binary/`:
+
+- `binary/drogon_1.9.11-0_amd64.deb`
+- `binary/eipscanner_1.3.0-1_amd64.deb`
+
+Install them into your build environment with:
+
+```bash
+sudo dpkg -i binary/*.deb
+```
+
+### CMake detection test
+
+This repository includes a small CMake project that confirms the installed Drogon and EIPScanner packages are discoverable through `find_package` and can be linked together. Build it from the repository root:
+
+```bash
+cmake -S . -B build
+cmake --build build
+./build/tests/library_detection
+```
+
+The `library_detection` binary will print a short confirmation message if both libraries were found and linked correctly.
+
 ---
 
 ## Running
