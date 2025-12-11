@@ -3,6 +3,7 @@
 #include <json/json.h>
 #include <optional>
 #include <string>
+#include "ConnectionConfig.h"
 
 struct Device
 {
@@ -12,6 +13,7 @@ struct Device
     uint32_t timeoutMs{1000};
     std::optional<std::string> templateRef;
     std::optional<std::string> edsFile;
+    std::optional<ConnectionConfig> connection;
 
     Json::Value toJson() const
     {
@@ -27,6 +29,10 @@ struct Device
         if (edsFile.has_value())
         {
             value["edsFile"] = *edsFile;
+        }
+        if (connection.has_value())
+        {
+            value["connection"] = connection->toJson();
         }
         return value;
     }
@@ -45,6 +51,10 @@ struct Device
         if (value.isMember("edsFile"))
         {
             device.edsFile = value["edsFile"].asString();
+        }
+        if (value.isMember("connection"))
+        {
+            device.connection = ConnectionConfig::fromJson(value["connection"]);
         }
         return device;
     }
@@ -70,6 +80,14 @@ struct Device
         {
             error = "Timeout must be greater than zero";
             return false;
+        }
+        if (connection.has_value())
+        {
+            if (!connection->isValid(error))
+            {
+                error = "Connection: " + error;
+                return false;
+            }
         }
         return true;
     }
