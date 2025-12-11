@@ -204,6 +204,33 @@ git clone <this-repo-url> tcms-cip-simulator
 cd tcms-cip-simulator
 ```
 
+## Local build and smoke test (Ubuntu)
+
+Install the packaged dependencies and development headers:
+
+```bash
+sudo dpkg -i drogon_1.9.11-0_amd64.deb eipscanner_1.3.0-1_amd64.deb
+sudo apt-get update
+sudo apt-get install -y libjsoncpp-dev libyaml-cpp-dev
+```
+
+Configure, build, and run the unit tests using the provided CMake preset:
+
+```bash
+cmake --preset linux-deb-packages
+cmake --build --preset linux-deb-packages
+ctest --preset default
+```
+
+Launch the server from the repository root and verify the health endpoint:
+
+```bash
+./build/deb/tcms_cip_sim &
+curl http://localhost:8080/healthz
+```
+
+You should receive `{ "status": "ok" }` from the health check when the server is running.
+
 ### EIPScanner
 
 Option 1 – Install system-wide:
