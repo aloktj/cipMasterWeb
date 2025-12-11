@@ -17,6 +17,8 @@ against any conformant EtherNet/IP / CIP device (drives, I/O blocks, rail equipm
 
 The goal is to have a **vendor-neutral** test and simulation tool for TCMS–equipment communications.
 
+For the planned user experience, see the [CIP Originator Simulator UI Design](docs/UI_DESIGN.md), which outlines the target layout, interactions, and diagnostics views for the web front end. A breakdown of implementation-ready tasks is available in the [UI Development Task Outline](docs/UI_DEVELOPMENT_TASKS.md).
+
 ---
 
 ## Goals
