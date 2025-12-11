@@ -1,0 +1,26 @@
+<%#include "models/Device.h"%>
+<%auto device = data.get<Device>("device");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Device Detail</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        dt { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Device: <%= drogon::HttpViewData::htmlTranslate(device.name.c_str(), device.name.size()) %></h1>
+    <dl>
+        <dt>IP Address</dt><dd><%= device.ipAddress %></dd>
+        <dt>Port</dt><dd><%= device.port %></dd>
+        <dt>Timeout (ms)</dt><dd><%= device.timeoutMs %></dd>
+        <dt>Template Ref</dt><dd><%= device.templateRef.value_or("-") %></dd>
+        <dt>EDS File</dt><dd><%= device.edsFile.value_or("-") %></dd>
+    </dl>
+    <p>
+        <a href="/devices/<%= device.name %>/edit">Edit</a> |
+        <a href="/devices">Back</a>
+    </p>
+</body>
+</html>
