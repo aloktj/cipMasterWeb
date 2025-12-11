@@ -1,0 +1,149 @@
+<%#include <vector>%>
+<%#include "models/Device.h"%>
+<%auto devices = data.get<std::vector<Device>>("devices");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connections</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .controls { display: flex; gap: 8px; }
+        button { padding: 6px 10px; cursor: pointer; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .online { background: #2ecc71; }
+        .offline { background: #e74c3c; }
+        .opening { background: #f39c12; }
+    </style>
+</head>
+<body>
+    <h1>Connection Monitor</h1>
+    <p>Use this page to open and close implicit connections and monitor their state. Data refreshes every 3 seconds.</p>
+    <table id="connectionTable">
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th>IP</th>
+                <th>Mode</th>
+                <th>RPI (µs)</th>
+                <th>Assemblies (O/T/C)</th>
+                <th>Status</th>
+                <th>Packets (Tx/Rx)</th>
+                <th>Last Update</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% for (const auto &device : devices) { %>
+            <tr data-device="<%= device.name %>">
+                <td><%= drogon::HttpViewData::htmlTranslate(device.name.c_str(), device.name.size()) %></td>
+                <td><%= device.ipAddress %>:<%= device.port %></td>
+                <td class="mode">-</td>
+                <td class="rpi">-</td>
+                <td class="assemblies">-</td>
+                <td class="status"><span class="status-dot offline"></span>Not connected</td>
+                <td class="packets">-</td>
+                <td class="last-update">-</td>
+                <td>
+                    <div class="controls">
+                        <button class="open">Open</button>
+                        <button class="close">Close</button>
+                    </div>
+                </td>
+            </tr>
+        <% } %>
+        </tbody>
+    </table>
+<script>
+const formatTs = (ms) => {
+    if (!ms) return '-';
+    const date = new Date(Number(ms));
+    return date.toLocaleTimeString();
+};
+
+async function refresh() {
+    const resp = await fetch('/api/connections');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const rows = document.querySelectorAll('#connectionTable tbody tr');
+    rows.forEach(row => {
+        const name = row.dataset.device;
+        const status = data.find(item => item.deviceName === name);
+        const statusCell = row.querySelector('.status');
+        const packetsCell = row.querySelector('.packets');
+        const lastUpdateCell = row.querySelector('.last-update');
+        if (status) {
+            while (statusCell.firstChild) statusCell.removeChild(statusCell.firstChild);
+            const newDot = document.createElement('span');
+            newDot.classList.add('status-dot');
+            if (status.opening) {
+                newDot.classList.add('opening');
+                statusCell.appendChild(newDot);
+                statusCell.appendChild(document.createTextNode('Opening...'));
+            } else if (status.connected) {
+                newDot.classList.add('online');
+                statusCell.appendChild(newDot);
+                statusCell.appendChild(document.createTextNode('Connected'));
+            } else {
+                newDot.classList.add('offline');
+                statusCell.appendChild(newDot);
+                statusCell.appendChild(document.createTextNode(status.lastError || 'Idle'));
+            }
+            packetsCell.textContent = `${status.packetsSent} / ${status.packetsReceived}`;
+            lastUpdateCell.textContent = formatTs(status.lastUpdateMs);
+        }
+    });
+}
+
+function wireButtons() {
+    document.querySelectorAll('#connectionTable tbody tr').forEach(row => {
+        const name = row.dataset.device;
+        const openBtn = row.querySelector('button.open');
+        const closeBtn = row.querySelector('button.close');
+        openBtn.addEventListener('click', async () => {
+            await fetch(`/api/connections/${encodeURIComponent(name)}/open`, {method: 'POST'});
+            refresh();
+        });
+        closeBtn.addEventListener('click', async () => {
+            await fetch(`/api/connections/${encodeURIComponent(name)}/close`, {method: 'POST'});
+            refresh();
+        });
+    });
+}
+
+function populateStatic() {
+    const rows = document.querySelectorAll('#connectionTable tbody tr');
+    rows.forEach(row => {
+        const deviceName = row.dataset.device;
+        <% for (const auto &device : devices) { %>
+        if (deviceName == "<%= device.name %>") {
+            const modeCell = row.querySelector('.mode');
+            const rpiCell = row.querySelector('.rpi');
+            const asmCell = row.querySelector('.assemblies');
+            <% if (device.connection.has_value()) { %>
+            modeCell.textContent = "<%= device.connection->multicast ? "Multicast" : "Unicast" %>";
+            rpiCell.textContent = "<%= device.connection->rpiUs %>";
+            asmCell.textContent = "O:<%= device.connection->outputAssembly.instance %>/<%= device.connection->outputAssembly.sizeBytes %>B, " +
+                                  "I:<%= device.connection->inputAssembly.instance %>/<%= device.connection->inputAssembly.sizeBytes %>B";
+            <% if (device.connection->configAssembly.has_value()) { %>
+            asmCell.textContent += ", C:<%= device.connection->configAssembly->instance %>/<%= device.connection->configAssembly->sizeBytes %>B";
+            <% } %>
+            <% } else { %>
+            modeCell.textContent = 'Not configured';
+            rpiCell.textContent = '-';
+            asmCell.textContent = '-';
+            <% } %>
+        }
+        <% } %>
+    });
+}
+
+wireButtons();
+populateStatic();
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
