@@ -18,5 +18,11 @@
     "console": true,
     "filename": "tcms_cip_sim",
     "logformat": "%Y-%m-%d %H:%M:%S.%e %<l> %t %v"
+  },
+  "custom_config": {
+    "repository": {
+      "type": "json",
+      "path": "config/devices.json"
+    }
   }
 }

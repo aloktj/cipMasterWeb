@@ -1,0 +1,37 @@
+<%#include "models/Device.h"%>
+<%auto device = data.get<Device>("device");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Device</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        label { display: block; margin-top: 10px; }
+        input { padding: 6px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>Edit Device</h1>
+    <form method="POST" action="/devices/<%= device.name %>/edit">
+        <label>Name
+            <input type="text" name="name" value="<%= device.name %>" required />
+        </label>
+        <label>IP Address
+            <input type="text" name="ipAddress" value="<%= device.ipAddress %>" required />
+        </label>
+        <label>Port
+            <input type="number" name="port" value="<%= device.port %>" />
+        </label>
+        <label>Timeout (ms)
+            <input type="number" name="timeoutMs" value="<%= device.timeoutMs %>" />
+        </label>
+        <label>Template Ref
+            <input type="text" name="templateRef" value="<%= device.templateRef.value_or("") %>" />
+        </label>
+        <label>EDS File
+            <input type="text" name="edsFile" value="<%= device.edsFile.value_or("") %>" />
+        </label>
+        <p><button type="submit">Save</button> <a href="/devices">Cancel</a></p>
+    </form>
+</body>
+</html>
