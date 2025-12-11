@@ -1,0 +1,17 @@
+[Unit]
+Description=TCMS CIP Simulator (Drogon)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tcms-cip-sim
+ExecStart=/opt/tcms-cip-sim/tcms_cip_sim --conf config/config.json
+User=tcms
+Group=tcms
+Restart=on-failure
+RestartSec=5
+Environment=TCMS_LOG_DIR=/var/log/tcms-cip-sim
+Environment=TCMS_CONFIG_PATH=/opt/tcms-cip-sim/config/config.json
+
+[Install]
+WantedBy=multi-user.target

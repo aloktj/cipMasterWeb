@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential pkg-config ninja-build libjsoncpp-dev uuid-dev libssl-dev zlib1g-dev
+
+      - name: Install bundled Drogon and EIPScanner packages
+        run: |
+          sudo dpkg -i drogon_1.9.11-0_amd64.deb eipscanner_1.3.0-1_amd64.deb || true
+          sudo apt-get -f install -y
+
+      - name: Configure
+        run: cmake -S . -B build -G "Ninja"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run ctest
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run library_detection smoke test
+        run: ./build/tests/library_detection
