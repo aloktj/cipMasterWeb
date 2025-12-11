@@ -28,6 +28,13 @@ Device deviceFromRequest(const HttpRequestPtr &request)
         {
             device.edsFile = (*json)["edsFile"].asString();
         }
+        if ((*json).isMember("signals") && (*json)["signals"].isArray())
+        {
+            for (const auto &sig : (*json)["signals"])
+            {
+                device.signals.push_back(SignalMapping::fromJson(sig));
+            }
+        }
     }
     else
     {
