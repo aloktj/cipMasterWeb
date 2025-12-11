@@ -1,0 +1,121 @@
+<%#include "models/Device.h"%>
+<%#include "models/ExplicitMessage.h"%>
+<%#include <json/json.h>%>
+<%auto device = data.get<Device>("device");%>
+<%auto form = data.get<ExplicitMessageForm>("form");%>
+<%auto error = data.get<std::string>("error");%>
+<%auto hasResult = data.get<bool>("hasResult");%>
+<%auto result = data.get<ExplicitMessageResult>("result");%>
+<%auto responseHex = data.get<std::string>("responseHex");%>
+<%auto decodedValue = data.get<std::string>("decodedValue");%>
+<%auto decodeError = data.get<std::string>("decodeError");%>
+<%auto generalStatusName = data.get<std::string>("generalStatusName");%>
+<%auto payloadType = data.get<std::string>("payloadType");%>
+<%auto presetList = data.get<Json::Value>("presets");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Explicit Messaging - <%= device.name %></title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        label { display: block; margin-top: 10px; }
+        input, select { padding: 6px; width: 320px; }
+        .form-row { margin-bottom: 10px; }
+        .error { color: darkred; margin: 0.5rem 0; }
+        .result { background: #f7f7f7; padding: 1rem; border: 1px solid #ccc; margin-top: 1rem; }
+        .status { font-weight: bold; }
+        .payload-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .payload-row input { width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Explicit Message to <%= drogon::HttpViewData::htmlTranslate(device.name.c_str(), device.name.size()) %></h1>
+    <p>
+        Target: <strong><%= device.ipAddress %></strong> : <%= device.port %> (timeout <%= device.timeoutMs %> ms)
+    </p>
+    <% if (!error.empty()) { %>
+        <p class="error"><%= error %></p>
+    <% } %>
+    <form method="POST" action="/devices/<%= device.name %>/explicit">
+        <div class="form-row">
+            <label>Service code
+                <input type="text" name="serviceCode" value="<%= form.serviceCode %>" placeholder="0x0E" required />
+            </label>
+        </div>
+        <div class="form-row">
+            <label>Preset
+                <select id="preset" onchange="applyPreset()">
+                    <option value="">Select a preset</option>
+                    <% for (const auto &preset : presetList) { %>
+                        <option value="<%= preset["code"].asString() %>"><%= preset["label"].asString() %></option>
+                    <% } %>
+                </select>
+            </label>
+        </div>
+        <div class="form-row">
+            <label>Class ID
+                <input type="text" name="classId" value="<%= form.classId %>" placeholder="0x04 or 4" required />
+            </label>
+        </div>
+        <div class="form-row">
+            <label>Instance ID
+                <input type="text" name="instanceId" value="<%= form.instanceId %>" placeholder="1" />
+            </label>
+        </div>
+        <div class="form-row">
+            <label>Attribute ID (optional, requires instance)
+                <input type="text" name="attributeId" value="<%= form.attributeId %>" placeholder="3" />
+            </label>
+        </div>
+        <div class="form-row payload-row">
+            <label>Payload type
+                <select name="payloadType">
+                    <option value="none" <%= payloadType == "none" ? "selected" : "" %>>None</option>
+                    <option value="hex" <%= payloadType == "hex" ? "selected" : "" %>>Hex bytes</option>
+                    <option value="uint8" <%= payloadType == "uint8" ? "selected" : "" %>>Unsigned 8-bit</option>
+                    <option value="uint16" <%= payloadType == "uint16" ? "selected" : "" %>>Unsigned 16-bit</option>
+                    <option value="uint32" <%= payloadType == "uint32" ? "selected" : "" %>>Unsigned 32-bit</option>
+                    <option value="int8" <%= payloadType == "int8" ? "selected" : "" %>>Signed 8-bit</option>
+                    <option value="real32" <%= payloadType == "real32" ? "selected" : "" %>>REAL32 (float)</option>
+                </select>
+            </label>
+            <label>Payload value
+                <input type="text" name="payload" value="<%= form.payload %>" placeholder="e.g. 0x0102 or 42" />
+            </label>
+        </div>
+        <p>
+            <button type="submit">Send</button>
+            <a href="/devices/<%= device.name %>">Back to device</a>
+        </p>
+    </form>
+
+    <% if (hasResult) { %>
+        <div class="result">
+            <h2>Response</h2>
+            <p class="status">General status: <%= (int)result.generalStatus %> (<%= generalStatusName %>)</p>
+            <p>Additional status: <% if (result.additionalStatus.empty()) { %>none<% } else { %>
+                <% for (size_t i = 0; i < result.additionalStatus.size(); ++i) { %>
+                    <%= result.additionalStatus[i] %><% if (i + 1 < result.additionalStatus.size()) { %>, <% } %>
+                <% } %>
+            <% } %></p>
+            <p>Raw data: <code><%= responseHex.empty() ? "(empty)" : responseHex %></code></p>
+            <% if (!decodedValue.empty()) { %>
+                <p>Decoded value: <strong><%= decodedValue %></strong></p>
+            <% } %>
+            <% if (!decodeError.empty()) { %>
+                <p class="error">Decode warning: <%= decodeError %></p>
+            <% } %>
+        </div>
+    <% } %>
+
+    <script>
+        function applyPreset() {
+            const select = document.getElementById('preset');
+            const value = select.value;
+            if (value) {
+                document.querySelector('input[name="serviceCode"]').value = value;
+            }
+        }
+    </script>
+</body>
+</html>

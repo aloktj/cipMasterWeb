@@ -15,11 +15,14 @@ enable_testing()
 add_executable(tcms_cip_sim
   src/main.cpp
   src/controllers/DeviceController.cpp
+  src/controllers/ExplicitMessagingController.cpp
   src/controllers/HealthController.cpp
   src/repositories/InMemoryDeviceRepository.cpp
   src/repositories/JsonDeviceRepository.cpp
   src/repositories/RepositoryProvider.cpp
+  src/services/EIPExplicitMessageService.cpp
   src/services/EIPIdentityService.cpp
+  src/services/ExplicitMessageServiceProvider.cpp
   src/services/IdentityServiceProvider.cpp
 )
 
