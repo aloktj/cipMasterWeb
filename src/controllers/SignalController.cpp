@@ -241,6 +241,119 @@ void SignalController::exportMappings(const HttpRequestPtr &request,
     callback(resp);
 }
 
+void SignalController::assemblies(const HttpRequestPtr &request,
+                                  std::function<void(const HttpResponsePtr &)> &&callback,
+                                  const std::string &deviceName) const
+{
+    std::string error;
+    auto device = fetchDevice(deviceName, error);
+    if (!device)
+    {
+        callback(makeError(k404NotFound, error));
+        return;
+    }
+
+    auto service = IOSignalServiceProvider::instance();
+    if (service->mappings(deviceName).empty() && !device->signals.empty())
+    {
+        service->applyMappings(deviceName, device->signals);
+    }
+
+    auto assembliesOpt = service->assemblies(deviceName);
+    if (!assembliesOpt)
+    {
+        callback(makeError(k404NotFound, "Device has no assembly data yet"));
+        return;
+    }
+
+    Json::Value payload;
+    payload["inputBytes"] = Json::arrayValue;
+    payload["outputBytes"] = Json::arrayValue;
+    for (const auto byte : assembliesOpt->input)
+    {
+        payload["inputBytes"].append(byte);
+    }
+    for (const auto byte : assembliesOpt->output)
+    {
+        payload["outputBytes"].append(byte);
+    }
+
+    if (device->connection.has_value())
+    {
+        Json::Value conn;
+        conn["inputInstance"] = device->connection->inputAssembly.instance;
+        conn["inputSize"] = device->connection->inputAssembly.sizeBytes;
+        conn["outputInstance"] = device->connection->outputAssembly.instance;
+        conn["outputSize"] = device->connection->outputAssembly.sizeBytes;
+        payload["connection"] = conn;
+    }
+
+    auto resp = HttpResponse::newHttpJsonResponse(payload);
+    resp->setStatusCode(k200OK);
+    callback(resp);
+}
+
+void SignalController::setOutputBytes(const HttpRequestPtr &request,
+                                      std::function<void(const HttpResponsePtr &)> &&callback,
+                                      const std::string &deviceName) const
+{
+    std::string error;
+    auto device = fetchDevice(deviceName, error);
+    if (!device)
+    {
+        callback(makeError(k404NotFound, error));
+        return;
+    }
+
+    auto json = request->getJsonObject();
+    if (!json || (!json->isArray() && !json->isMember("bytes")))
+    {
+        callback(makeError(k400BadRequest, "Expected an array of bytes or {\"bytes\": []}"));
+        return;
+    }
+
+    const Json::Value &byteArray = json->isArray() ? *json : (*json)["bytes"];
+    if (!byteArray.isArray())
+    {
+        callback(makeError(k400BadRequest, "bytes must be an array"));
+        return;
+    }
+
+    std::vector<uint8_t> bytes;
+    bytes.reserve(byteArray.size());
+    for (const auto &item : byteArray)
+    {
+        if (!item.isUInt())
+        {
+            callback(makeError(k400BadRequest, "All bytes must be unsigned integers"));
+            return;
+        }
+        const auto value = item.asUInt();
+        if (value > 255)
+        {
+            callback(makeError(k400BadRequest, "Byte values must be between 0 and 255"));
+            return;
+        }
+        bytes.push_back(static_cast<uint8_t>(value));
+    }
+
+    auto service = IOSignalServiceProvider::instance();
+    if (service->mappings(deviceName).empty() && !device->signals.empty())
+    {
+        service->applyMappings(deviceName, device->signals);
+    }
+
+    if (!service->applyOutputBytes(deviceName, bytes))
+    {
+        callback(makeError(k404NotFound, "Device has no output mappings"));
+        return;
+    }
+
+    auto resp = HttpResponse::newHttpJsonResponse(Json::Value());
+    resp->setStatusCode(k202Accepted);
+    callback(resp);
+}
+
 void SignalController::setValue(const HttpRequestPtr &request,
                                 std::function<void(const HttpResponsePtr &)> &&callback,
                                 const std::string &deviceName,
@@ -295,6 +408,25 @@ void SignalController::view(const HttpRequestPtr &request,
     HttpViewData data;
     data.insert("device", *device);
     auto resp = HttpResponse::newHttpViewResponse("devices/io.csp", data);
+    resp->setStatusCode(k200OK);
+    callback(resp);
+}
+
+void SignalController::assembliesView(const HttpRequestPtr &request,
+                                      std::function<void(const HttpResponsePtr &)> &&callback,
+                                      const std::string &deviceName) const
+{
+    std::string error;
+    auto device = fetchDevice(deviceName, error);
+    if (!device)
+    {
+        callback(makeError(k404NotFound, error));
+        return;
+    }
+
+    HttpViewData data;
+    data.insert("device", *device);
+    auto resp = HttpResponse::newHttpViewResponse("devices/assemblies.csp", data);
     resp->setStatusCode(k200OK);
     callback(resp);
 }

@@ -1,0 +1,144 @@
+<%#include "models/Device.h"%>
+<%auto device = data.get<Device>("device");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assemblies - <%= drogon::HttpViewData::htmlTranslate(device.name.c_str(), device.name.size()) %></title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h1 { margin-bottom: 0.25rem; }
+        .subtitle { color: #555; margin-bottom: 1rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+        .card { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+        .card h2 { margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        th, td { border: 1px solid #ddd; padding: 6px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.95em; }
+        th { background: #f7f7f7; text-align: left; }
+        .toolbar { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+        textarea { width: 100%; min-height: 100px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+        .meta { color: #666; margin-bottom: 0.25rem; }
+        .actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .status { color: #888; font-size: 0.9em; }
+        button { padding: 6px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Assemblies</h1>
+    <div class="subtitle">Device: <strong><%= device.name %></strong> — <%= device.ipAddress %></div>
+    <div class="grid">
+        <div class="card">
+            <h2>Outgoing (O→T)</h2>
+            <div class="meta" id="outMeta">Instance: - • Size: -</div>
+            <table id="outputTable">
+                <thead><tr><th>Offset</th><th>Hex</th><th>Dec</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="actions">
+                <label for="outputEditor">Edit hex bytes</label>
+            </div>
+            <textarea id="outputEditor" placeholder="e.g. 01 00 FF"></textarea>
+            <div class="toolbar">
+                <button id="applyOutput">Apply to output</button>
+                <button id="loadOutputFromTable">Load from table</button>
+            </div>
+            <div class="status" id="outputStatus"></div>
+        </div>
+        <div class="card">
+            <h2>Incoming (T→O)</h2>
+            <div class="meta" id="inMeta">Instance: - • Size: -</div>
+            <table id="inputTable">
+                <thead><tr><th>Offset</th><th>Hex</th><th>Dec</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="status" id="inputStatus">Waiting for connection data…</div>
+        </div>
+    </div>
+    <p><a href="/devices/<%= device.name %>">Back to device</a></p>
+<script>
+const device = "<%= device.name %>";
+
+function bytesToHex(bytes) {
+    return bytes.map(b => b.toString(16).padStart(2, '0')).join(' ');
+}
+
+function renderTable(containerId, bytes) {
+    const tbody = document.querySelector(`#${containerId} tbody`);
+    tbody.innerHTML = '';
+    bytes.forEach((byte, idx) => {
+        const row = document.createElement('tr');
+        const offset = document.createElement('td');
+        offset.textContent = idx;
+        const hex = document.createElement('td');
+        hex.textContent = '0x' + byte.toString(16).padStart(2, '0').toUpperCase();
+        const dec = document.createElement('td');
+        dec.textContent = byte;
+        row.appendChild(offset);
+        row.appendChild(hex);
+        row.appendChild(dec);
+        tbody.appendChild(row);
+    });
+}
+
+function parseHex(text) {
+    if (!text.trim()) return [];
+    const parts = text.trim().split(/\s+/);
+    const values = [];
+    for (const part of parts) {
+        const value = parseInt(part, 16);
+        if (Number.isNaN(value) || value < 0 || value > 255) {
+            throw new Error(`Invalid byte: ${part}`);
+        }
+        values.push(value);
+    }
+    return values;
+}
+
+async function loadAssemblies() {
+    const resp = await fetch(`/api/devices/${encodeURIComponent(device)}/assemblies`);
+    if (!resp.ok) {
+        document.getElementById('inputStatus').textContent = 'Unable to load assembly bytes.';
+        document.getElementById('outputStatus').textContent = 'Unable to load assembly bytes.';
+        return;
+    }
+    const data = await resp.json();
+    renderTable('inputTable', data.inputBytes || []);
+    renderTable('outputTable', data.outputBytes || []);
+    document.getElementById('outputEditor').value = bytesToHex(data.outputBytes || []);
+    if (data.connection) {
+        document.getElementById('inMeta').textContent = `Instance: ${data.connection.inputInstance} • Size: ${data.connection.inputSize} bytes`;
+        document.getElementById('outMeta').textContent = `Instance: ${data.connection.outputInstance} • Size: ${data.connection.outputSize} bytes`;
+    }
+    document.getElementById('inputStatus').textContent = data.inputBytes && data.inputBytes.length ? 'Latest input assembly shown below.' : 'No input bytes received yet.';
+    document.getElementById('outputStatus').textContent = data.outputBytes && data.outputBytes.length ? 'Latest output assembly shown below.' : 'No output bytes staged yet.';
+}
+
+document.getElementById('applyOutput').addEventListener('click', async () => {
+    const status = document.getElementById('outputStatus');
+    try {
+        const bytes = parseHex(document.getElementById('outputEditor').value);
+        const resp = await fetch(`/api/devices/${encodeURIComponent(device)}/assemblies/output`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bytes })
+        });
+        if (!resp.ok) {
+            status.textContent = 'Failed to apply output bytes.';
+            return;
+        }
+        status.textContent = 'Output bytes staged successfully.';
+        loadAssemblies();
+    } catch (err) {
+        status.textContent = err.message;
+    }
+});
+
+document.getElementById('loadOutputFromTable').addEventListener('click', () => {
+    const tableBytes = Array.from(document.querySelectorAll('#outputTable tbody tr td:nth-child(2)')).map(cell => parseInt(cell.textContent.replace('0x',''), 16));
+    document.getElementById('outputEditor').value = bytesToHex(tableBytes);
+});
+
+loadAssemblies();
+setInterval(loadAssemblies, 3000);
+</script>
+</body>
+</html>

@@ -20,6 +20,7 @@
     </dl>
     <p>
         <a href="/devices/<%= device.name %>/explicit">Explicit Messaging</a> |
+        <a href="/devices/<%= device.name %>/assemblies">Assemblies</a> |
         <a href="/devices/<%= device.name %>/io">I/O Signals</a> |
         <a href="/devices/<%= device.name %>/edit">Edit</a> |
         <a href="/devices">Back</a>
