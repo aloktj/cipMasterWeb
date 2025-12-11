@@ -1,0 +1,59 @@
+<%#include <vector>%>
+<%#include "models/Device.h"%>
+<%auto devices = data.get<std::vector<Device>>("devices");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CIP Master</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; color: #1c1c1c; }
+        h1 { margin-bottom: 0.5rem; }
+        p.lead { color: #444; margin-top: 0; }
+        .card { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-top: 1.5rem; }
+        .actions { margin: 1rem 0; }
+        .actions a { display: inline-block; margin-right: 0.75rem; padding: 0.6rem 1rem; background: #2c7be5; color: #fff; text-decoration: none; border-radius: 4px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 0.75rem; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .empty { margin-top: 0.75rem; color: #555; }
+    </style>
+</head>
+<body>
+    <h1>Welcome to CIP Master</h1>
+    <p class="lead">Manage EtherNet/IP devices, monitor connections, and inspect I/O mappings.</p>
+
+    <div class="actions">
+        <a href="/devices/new">Add Device</a>
+        <a href="/devices">View Devices</a>
+        <a href="/connections/monitor">Connection Monitor</a>
+    </div>
+
+    <div class="card">
+        <h2>Configured Devices</h2>
+        <% if (devices.empty()) { %>
+            <p class="empty">No devices found yet. Add a device to get started.</p>
+        <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>IP Address</th>
+                        <th>Port</th>
+                        <th>Timeout (ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (const auto &device : devices) { %>
+                        <tr>
+                            <td><a href="/devices/<%= device.name %>"><%= drogon::HttpViewData::htmlTranslate(device.name.c_str(), device.name.size()) %></a></td>
+                            <td><%= drogon::HttpViewData::htmlTranslate(device.ipAddress.c_str(), device.ipAddress.size()) %></td>
+                            <td><%= device.port %></td>
+                            <td><%= device.timeoutMs %></td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+</body>
+</html>
