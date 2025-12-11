@@ -1,5 +1,10 @@
-find_package(Drogon CONFIG REQUIRED)
-find_package(EIPScanner REQUIRED)
+if(NOT TARGET Drogon::Drogon)
+  find_package(Drogon CONFIG REQUIRED)
+endif()
+
+if(NOT TARGET EIPScanner::EIPScanner)
+  find_package(EIPScanner REQUIRED)
+endif()
 
 add_executable(library_detection
   library_detection.cpp
