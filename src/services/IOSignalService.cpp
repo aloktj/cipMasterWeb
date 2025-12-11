@@ -111,6 +111,41 @@ std::vector<SignalValue> IOSignalService::snapshot(const std::string &deviceName
     return values;
 }
 
+std::optional<IOSignalService::AssemblyData> IOSignalService::assemblies(const std::string &deviceName) const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = devices_.find(deviceName);
+    if (it == devices_.end())
+    {
+        return std::nullopt;
+    }
+
+    AssemblyData data;
+    data.input = it->second.lastInput;
+    data.output = it->second.lastOutput;
+    return data;
+}
+
+bool IOSignalService::applyOutputBytes(const std::string &deviceName, const std::vector<uint8_t> &bytes)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = devices_.find(deviceName);
+    if (it == devices_.end())
+    {
+        return false;
+    }
+
+    it->second.lastOutput = bytes;
+    for (const auto &mapping : it->second.mappings)
+    {
+        if (mapping.direction == SignalDirection::Output)
+        {
+            it->second.outputs[mapping.name] = decodeValue(mapping, bytes);
+        }
+    }
+    return true;
+}
+
 bool IOSignalService::setOutputValue(const std::string &deviceName, const std::string &signalName, double engineeringValue)
 {
     std::lock_guard<std::mutex> lock(mutex_);

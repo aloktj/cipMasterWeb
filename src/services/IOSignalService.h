@@ -13,6 +13,13 @@ public:
     void applyMappings(const std::string &deviceName, const std::vector<SignalMapping> &mappings);
     std::vector<SignalMapping> mappings(const std::string &deviceName);
     std::vector<SignalValue> snapshot(const std::string &deviceName);
+    struct AssemblyData
+    {
+        std::vector<uint8_t> input;
+        std::vector<uint8_t> output;
+    };
+    std::optional<AssemblyData> assemblies(const std::string &deviceName) const;
+    bool applyOutputBytes(const std::string &deviceName, const std::vector<uint8_t> &bytes);
     bool setOutputValue(const std::string &deviceName, const std::string &signalName, double engineeringValue);
     void consumeInputBytes(const std::string &deviceName, const std::vector<uint8_t> &data);
     void fillOutputBytes(const std::string &deviceName, std::vector<uint8_t> &buffer);

@@ -61,6 +61,7 @@ add_executable(tcms_cip_sim
   src/main.cpp
   src/controllers/ConnectionController.cpp
   src/controllers/DeviceController.cpp
+  src/controllers/HomeController.cpp
   src/controllers/SignalController.cpp
   src/controllers/ExplicitMessagingController.cpp
   src/controllers/HealthController.cpp
