@@ -88,7 +88,7 @@ void ConnectionController::view(const HttpRequestPtr &request,
 {
     HttpViewData data;
     data.insert("devices", RepositoryProvider::instance()->list());
-    auto response = HttpResponse::newHttpViewResponse("connections/index.csp", data);
+    auto response = HttpResponse::newHttpViewResponse("connections/monitor.csp", data);
     response->setStatusCode(k200OK);
     callback(response);
 }

@@ -1,0 +1,50 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "linux-deb-packages",
+      "displayName": "Linux - build against bundled .deb packages",
+      "description": "Use the preinstalled drogon_1.9.11 and eipscanner_1.3.0 Debian packages",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/deb",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_EIPSCANNER_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "linux-eipscanner-src",
+      "displayName": "Linux - fetch and build EIPScanner from source",
+      "description": "Build EIPScanner 1.3.0 from Git while keeping other dependencies from packages",
+      "inherits": "linux-deb-packages",
+      "binaryDir": "${sourceDir}/build/eipscanner-src",
+      "cacheVariables": {
+        "BUILD_EIPSCANNER_FROM_SOURCE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-deb-packages",
+      "configurePreset": "linux-deb-packages"
+    },
+    {
+      "name": "linux-eipscanner-src",
+      "configurePreset": "linux-eipscanner-src"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "linux-deb-packages",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

@@ -170,7 +170,8 @@ void SignalController::importMappings(const HttpRequestPtr &request,
         return;
     }
 
-    auto body = request->getBody();
+    const auto bodyView = request->getBody();
+    const std::string body(bodyView.data(), bodyView.size());
     const auto format = request->getParameter("format");
     const bool yaml = format == "yaml";
 

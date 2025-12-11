@@ -242,6 +242,27 @@ Install them into your build environment with:
 sudo dpkg -i drogon_1.9.11-0_amd64.deb eipscanner_1.3.0-1_amd64.deb
 ```
 
+If you prefer a scripted install, run `scripts/install_debian_dependencies.sh` (requires `sudo`).
+
+### Build options
+
+**Bundled packages (x86_64/PC)**
+
+- Use the Debian packages above and configure via:
+  ```bash
+  cmake --preset linux-deb-packages
+  cmake --build build/deb
+  ctest --test-dir build/deb --output-on-failure
+  ```
+
+**Source build for EIPScanner (PC/RPi/arm64)**
+
+- When the amd64 `.deb` is not usable (e.g., Raspberry Pi), build EIPScanner 1.3.0 from source:
+  ```bash
+  scripts/build_with_eipscanner_source.sh
+  ```
+- The preset `linux-eipscanner-src` tells CMake to fetch EIPScanner from Git while keeping Drogon from your package manager.
+
 ### CMake detection test
 
 This repository includes a small CMake project that confirms the installed Drogon and EIPScanner packages are discoverable through `find_package` and can be linked together. Build it from the repository root:
@@ -273,6 +294,41 @@ Once the server is running, verify it is reachable with the built-in health chec
 * `http://localhost:8080/healthz` – basic liveness probe returning `{ "status": "ok" }`
 
 Additional routes will be added as device CRUD and CIP features come online.
+
+### Deployment (PC / Raspberry Pi)
+
+**Systemd service**
+
+1. Copy the built binary and configuration to `/opt/tcms-cip-sim`.
+2. Create a service account (e.g., `tcms`) with permission to read the config and write logs.
+3. Install `packaging/systemd/tcms-cip-sim.service` to `/etc/systemd/system/` and adjust paths if needed.
+4. Enable and start:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now tcms-cip-sim
+   sudo systemctl status tcms-cip-sim
+   ```
+
+**Container image (multi-arch PC/RPi)**
+
+The multi-stage Dockerfile in `packaging/container/Dockerfile` builds EIPScanner from source so it can target both amd64 and arm64.
+
+```bash
+# For local amd64 builds
+docker build -f packaging/container/Dockerfile -t tcms-cip-sim:local .
+
+# For multi-arch (requires Docker Buildx)
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f packaging/container/Dockerfile \
+  -t ghcr.io/<org>/tcms-cip-sim:latest .
+```
+
+Run the container with a bind-mounted config if you need to override defaults:
+
+```bash
+docker run -p 8080:8080 -v $(pwd)/config:/opt/tcms-cip-sim/config tcms-cip-sim:local
+```
 
 ---
 
