@@ -1,0 +1,164 @@
+<%#include "models/Device.h"%>
+<%auto device = data.get<Device>("device");%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>I/O Signals - <%= drogon::HttpViewData::htmlTranslate(device.name.c_str(), device.name.size()) %></title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h1 { margin-bottom: 0; }
+        .meta { color: #555; margin-bottom: 1rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+        .card { border: 1px solid #ccc; padding: 1rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+        .label { font-weight: bold; }
+        .led { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 8px; background: #bdc3c7; }
+        .led.on { background: #2ecc71; }
+        .toolbar { margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center; }
+        textarea { width: 100%; min-height: 140px; }
+        .enum-label { font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <h1>I/O Signals</h1>
+    <div class="meta">Device: <strong><%= device.name %></strong> — <%= device.ipAddress %></div>
+    <div class="toolbar">
+        <button id="refresh">Refresh</button>
+        <button id="exportJson">Export JSON</button>
+        <button id="exportYaml">Export YAML</button>
+    </div>
+    <div class="grid" id="signalGrid"></div>
+    <h2>Import / Replace Mappings</h2>
+    <p>Paste JSON or YAML. Empty payload falls back to defaults derived from connection/EDS metadata.</p>
+    <textarea id="importPayload" placeholder="[ { \"name\": \"Speed\", \"direction\": \"output\", ... } ]"></textarea>
+    <div class="toolbar">
+        <select id="importFormat">
+            <option value="json">JSON</option>
+            <option value="yaml">YAML</option>
+        </select>
+        <button id="importBtn">Import</button>
+    </div>
+    <p><a href="/devices/<%= device.name %>">Back to device</a></p>
+<script>
+const device = "<%= device.name %>";
+
+function enumLabel(mapping, raw) {
+    if (!mapping.enums || mapping.enums.length === 0) return null;
+    const match = mapping.enums.find(e => Number(e.value) === Number(raw));
+    return match ? match.label : null;
+}
+
+function renderSignals(signals) {
+    const grid = document.getElementById('signalGrid');
+    grid.innerHTML = '';
+    signals.forEach(sig => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const title = document.createElement('div');
+        title.className = 'label';
+        title.textContent = sig.name;
+        card.appendChild(title);
+        const meta = document.createElement('div');
+        meta.textContent = `${sig.direction.toUpperCase()} • ${sig.type} @ byte ${sig.byteOffset}`;
+        card.appendChild(meta);
+
+        const enumInfo = enumLabel(sig, sig.rawValue);
+        const units = sig.units ? ` ${sig.units}` : '';
+        if (sig.direction === 'output') {
+            if (sig.type === 'bool') {
+                const toggle = document.createElement('input');
+                toggle.type = 'checkbox';
+                toggle.checked = Boolean(sig.engineeringValue);
+                toggle.addEventListener('change', async () => {
+                    await setValue(sig.name, toggle.checked ? 1 : 0);
+                });
+                card.appendChild(toggle);
+            } else if (sig.type === 'uint8' || sig.type === 'uint16') {
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = 0;
+                slider.max = sig.type === 'uint8' ? 255 : 65535;
+                slider.value = sig.rawValue;
+                slider.addEventListener('input', async () => {
+                    await setValue(sig.name, Number(slider.value) * sig.scale + sig.engineeringOffset);
+                });
+                card.appendChild(slider);
+            } else {
+                const numeric = document.createElement('input');
+                numeric.type = 'number';
+                numeric.value = sig.engineeringValue.toFixed(3);
+                numeric.addEventListener('change', async () => {
+                    await setValue(sig.name, Number(numeric.value));
+                });
+                card.appendChild(numeric);
+            }
+            const current = document.createElement('div');
+            current.textContent = `Current: ${sig.engineeringValue.toFixed(3)}${units}`;
+            card.appendChild(current);
+        } else {
+            if (sig.type === 'bool') {
+                const led = document.createElement('span');
+                led.className = 'led ' + (sig.engineeringValue ? 'on' : '');
+                card.appendChild(led);
+                card.appendChild(document.createTextNode(sig.engineeringValue ? 'On' : 'Off'));
+            } else {
+                const label = document.createElement('div');
+                label.textContent = `${sig.engineeringValue.toFixed(3)}${units}`;
+                card.appendChild(label);
+            }
+        }
+
+        const raw = document.createElement('div');
+        raw.className = 'enum-label';
+        raw.textContent = `Raw: ${sig.rawValue}` + (enumInfo ? ` (${enumInfo})` : '');
+        card.appendChild(raw);
+
+        grid.appendChild(card);
+    });
+}
+
+async function loadSignals() {
+    const resp = await fetch(`/api/devices/${encodeURIComponent(device)}/signals`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderSignals(data);
+}
+
+async function setValue(name, value) {
+    await fetch(`/api/devices/${encodeURIComponent(device)}/signals/${encodeURIComponent(name)}/value`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ value })
+    });
+    loadSignals();
+}
+
+document.getElementById('refresh').addEventListener('click', loadSignals);
+
+document.getElementById('importBtn').addEventListener('click', async () => {
+    const payload = document.getElementById('importPayload').value;
+    const format = document.getElementById('importFormat').value;
+    await fetch(`/api/devices/${encodeURIComponent(device)}/signals/import?format=${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: payload
+    });
+    loadSignals();
+});
+
+document.getElementById('exportJson').addEventListener('click', async () => {
+    const resp = await fetch(`/api/devices/${encodeURIComponent(device)}/signals/export?format=json`);
+    const data = await resp.json();
+    document.getElementById('importPayload').value = JSON.stringify(data, null, 2);
+});
+
+document.getElementById('exportYaml').addEventListener('click', async () => {
+    const resp = await fetch(`/api/devices/${encodeURIComponent(device)}/signals/export?format=yaml`);
+    const text = await resp.text();
+    document.getElementById('importPayload').value = text;
+});
+
+loadSignals();
+setInterval(loadSignals, 2000);
+</script>
+</body>
+</html>

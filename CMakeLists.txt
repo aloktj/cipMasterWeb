@@ -16,6 +16,7 @@ add_executable(tcms_cip_sim
   src/main.cpp
   src/controllers/ConnectionController.cpp
   src/controllers/DeviceController.cpp
+  src/controllers/SignalController.cpp
   src/controllers/ExplicitMessagingController.cpp
   src/controllers/HealthController.cpp
   src/repositories/InMemoryDeviceRepository.cpp
@@ -24,6 +25,7 @@ add_executable(tcms_cip_sim
   src/services/ConnectionLifecycleService.cpp
   src/services/EIPExplicitMessageService.cpp
   src/services/EIPIdentityService.cpp
+  src/services/IOSignalService.cpp
   src/services/ExplicitMessageServiceProvider.cpp
   src/services/IdentityServiceProvider.cpp
 )
@@ -35,6 +37,7 @@ target_include_directories(tcms_cip_sim PRIVATE src /usr/include/jsoncpp)
 target_link_libraries(tcms_cip_sim PRIVATE
   Drogon::Drogon
   EIPScanner::EIPScanner
+  yaml-cpp
 )
 
 drogon_create_views(tcms_cip_sim ${CMAKE_CURRENT_SOURCE_DIR}/views ${CMAKE_CURRENT_BINARY_DIR}/generated/views)

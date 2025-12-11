@@ -3,7 +3,9 @@
 #include <json/json.h>
 #include <optional>
 #include <string>
+#include <vector>
 #include "ConnectionConfig.h"
+#include "SignalMapping.h"
 
 struct Device
 {
@@ -14,6 +16,7 @@ struct Device
     std::optional<std::string> templateRef;
     std::optional<std::string> edsFile;
     std::optional<ConnectionConfig> connection;
+    std::vector<SignalMapping> signals;
 
     Json::Value toJson() const
     {
@@ -34,6 +37,12 @@ struct Device
         {
             value["connection"] = connection->toJson();
         }
+        Json::Value signalArray(Json::arrayValue);
+        for (const auto &signal : signals)
+        {
+            signalArray.append(signal.toJson());
+        }
+        value["signals"] = signalArray;
         return value;
     }
 
@@ -55,6 +64,13 @@ struct Device
         if (value.isMember("connection"))
         {
             device.connection = ConnectionConfig::fromJson(value["connection"]);
+        }
+        if (value.isMember("signals") && value["signals"].isArray())
+        {
+            for (const auto &signal : value["signals"])
+            {
+                device.signals.push_back(SignalMapping::fromJson(signal));
+            }
         }
         return device;
     }
@@ -97,5 +113,5 @@ inline bool operator==(const Device &lhs, const Device &rhs)
 {
     return lhs.name == rhs.name && lhs.ipAddress == rhs.ipAddress && lhs.port == rhs.port &&
            lhs.timeoutMs == rhs.timeoutMs && lhs.templateRef == rhs.templateRef &&
-           lhs.edsFile == rhs.edsFile;
+           lhs.edsFile == rhs.edsFile && lhs.signals == rhs.signals;
 }

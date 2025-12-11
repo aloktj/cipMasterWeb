@@ -1,4 +1,5 @@
 #include "ConnectionLifecycleService.h"
+#include "IOSignalService.h"
 
 #include <EIPScanner/MessageRouter.h>
 #include <EIPScanner/cip/EPath.h>
@@ -57,6 +58,8 @@ bool ConnectionLifecycleService::open(const Device &device, std::string &error)
         error = "Device has no connection configuration";
         return false;
     }
+
+    IOSignalServiceProvider::instance()->applyMappings(device.name, device.signals);
 
     std::lock_guard<std::mutex> lock(mutex_);
     auto &entry = connections_[device.name];
@@ -128,6 +131,7 @@ bool ConnectionLifecycleService::open(const Device &device, std::string &error)
                 status.packetsReceived++;
                 status.lastSequence += received > 0 ? 1 : 0;
             });
+            IOSignalServiceProvider::instance()->consumeInputBytes(name, data);
         });
 
         sharedConn->setSendDataListener([this, name = device.name](std::vector<uint8_t> &buffer) {
@@ -139,6 +143,7 @@ bool ConnectionLifecycleService::open(const Device &device, std::string &error)
             }
             updateStatus(it->second, [](ConnectionStatus &status) { status.packetsSent++; });
             buffer.resize(it->second.device.connection->outputAssembly.sizeBytes, 0);
+            IOSignalServiceProvider::instance()->fillOutputBytes(name, buffer);
         });
 
         sharedConn->setCloseListener([this, name = device.name]() {
