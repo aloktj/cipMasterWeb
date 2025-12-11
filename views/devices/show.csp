@@ -19,6 +19,7 @@
         <dt>EDS File</dt><dd><%= device.edsFile.value_or("-") %></dd>
     </dl>
     <p>
+        <a href="/devices/<%= device.name %>/explicit">Explicit Messaging</a> |
         <a href="/devices/<%= device.name %>/edit">Edit</a> |
         <a href="/devices">Back</a>
     </p>
