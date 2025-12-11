@@ -231,15 +231,15 @@ On successful build, the main executable (e.g. `tcms_cip_sim`) will be placed in
 
 ## Development environment setup
 
-Prebuilt Debian packages for the core dependencies are stored in `binary/`:
+Prebuilt Debian packages for the core dependencies are stored in the repository root:
 
-- `binary/drogon_1.9.11-0_amd64.deb`
-- `binary/eipscanner_1.3.0-1_amd64.deb`
+- `drogon_1.9.11-0_amd64.deb`
+- `eipscanner_1.3.0-1_amd64.deb`
 
 Install them into your build environment with:
 
 ```bash
-sudo dpkg -i binary/*.deb
+sudo dpkg -i drogon_1.9.11-0_amd64.deb eipscanner_1.3.0-1_amd64.deb
 ```
 
 ### CMake detection test
@@ -258,21 +258,21 @@ The `library_detection` binary will print a short confirmation message if both l
 
 ## Running
 
-From the `build` directory:
+Build the project and run the Drogon server:
 
 ```bash
-./tcms_cip_sim
+cmake -S . -B build
+cmake --build build
+./build/tcms_cip_sim
 ```
 
-By default, the application listens on a configurable HTTP port (e.g. `http://localhost:8080`).
+Runtime configuration lives in `config/config.json`. Update the `listeners` block to change the HTTP port or bind address and adjust the `log` section to tune file/console logging.
 
-Open a browser and navigate to:
+Once the server is running, verify it is reachable with the built-in health check:
 
-* `http://localhost:8080/devices` – device list & management
-* `http://localhost:8080/devices/<id>/explicit` – Class 3 explicit UI
-* `http://localhost:8080/devices/<id>/io` – Class 1 I/O and signal mapping
+* `http://localhost:8080/healthz` – basic liveness probe returning `{ "status": "ok" }`
 
-(Exact routes may evolve; keep this section in sync with the implementation.)
+Additional routes will be added as device CRUD and CIP features come online.
 
 ---
 

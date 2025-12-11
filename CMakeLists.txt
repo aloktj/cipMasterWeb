@@ -7,4 +7,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Allow find_package to pick up custom modules shipped with this repo.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
+find_package(Drogon CONFIG REQUIRED)
+find_package(EIPScanner REQUIRED)
+
+add_executable(tcms_cip_sim
+  src/main.cpp
+  src/controllers/HealthController.cpp
+)
+
+target_compile_features(tcms_cip_sim PRIVATE cxx_std_17)
+
+target_link_libraries(tcms_cip_sim PRIVATE
+  Drogon::Drogon
+  EIPScanner::EIPScanner
+)
+
 add_subdirectory(tests)
